@@ -77,10 +77,10 @@ describe Grape::Entity do
   context 'instance methods' do
     let(:model){ mock(attributes) }
     let(:attributes){ {
-      :name => 'Bob Bobson', 
+      :name => 'Bob Bobson',
       :email => 'bob@example.com',
       :friends => [
-        mock(:name => "Friend 1", :email => 'friend1@example.com', :friends => []), 
+        mock(:name => "Friend 1", :email => 'friend1@example.com', :friends => []),
         mock(:name => "Friend 2", :email => 'friend2@example.com', :friends => [])
       ]
     } }
@@ -152,6 +152,17 @@ describe Grape::Entity do
         subject.send(:conditions_met?, exposure_options, :condition1 => true, :condition2 => true, :other => true).should be_true
       end
 
+      it 'should pass through hash :if exposure if attribute matches any of array value' do
+        exposure_options = {:if => {:condition1 => ['a', 'b'], :condition2 => ['a']}}
+
+        subject.send(:conditions_met?, exposure_options, { :condition1 => 'a', :condition2 => 'a'}).should be_true
+        subject.send(:conditions_met?, exposure_options, { :condition1 => 'b', :condition2 => 'a'}).should be_true
+        subject.send(:conditions_met?, exposure_options, { :condition1 => ['a', 'b'], :condition2 => 'a'}).should be_true
+        subject.send(:conditions_met?, exposure_options, { :condition1 => ['a', 'b'], :condition2 => ['a']}).should be_true
+        subject.send(:conditions_met?, exposure_options, { :condition1 => 'b', :condition2 => 'b'}).should be_false
+        subject.send(:conditions_met?, exposure_options, { :condition1 => 'c', :condition2 => 'c'}).should be_false
+      end
+
       it 'should only pass through proc :if exposure if it returns truthy value' do
         exposure_options = {:if => lambda{|obj,opts| opts[:true]}}
 
@@ -168,6 +179,19 @@ describe Grape::Entity do
         subject.send(:conditions_met?, exposure_options, :condition1 => false, :condition2 => true).should be_false
         subject.send(:conditions_met?, exposure_options, :condition1 => true, :condition2 => true, :other => true).should be_false
         subject.send(:conditions_met?, exposure_options, :condition1 => false, :condition2 => false).should be_true
+      end
+
+      it 'should only pass through hash :unless exposure if any attributes do not match value in array' do
+        exposure_options = {:unless => {:condition1 => ['a', 'b'], :condition2 => ['a'] }}
+
+        subject.send(:conditions_met?, exposure_options, :condition1 => 'a').should be_false
+        subject.send(:conditions_met?, exposure_options, :condition1 => ['a', 'b']).should be_false
+        subject.send(:conditions_met?, exposure_options, :condition1 => ['a', 'b'], :condition2 => ['a']).should be_false
+        subject.send(:conditions_met?, exposure_options, :condition1 => 'c').should be_true
+        subject.send(:conditions_met?, exposure_options, :condition1 => ['c']).should be_true
+        subject.send(:conditions_met?, exposure_options, :condition1 => ['a', 'c']).should be_false
+        subject.send(:conditions_met?, exposure_options, :condition1 => ['a', 'c'], :condition2 => ['a']).should be_false
+        subject.send(:conditions_met?, exposure_options, :condition1 => ['a', 'b'], :condition2 => ['c']).should be_false
       end
 
       it 'should only pass through proc :unless exposure if it returns falsy value' do
